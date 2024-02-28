@@ -67,7 +67,7 @@ fn print(map: Vec<(&String, &TempStats)>) {
 
 const CHUNK_SIZE: usize = 1 << 23; // 1 mb
 
-fn hard_way() -> io::Result<()> {
+fn with_sequential() -> io::Result<()> {
     let mut map: HashMap<String, TempStats> = HashMap::new();
     let mut _counter = 0;
 
@@ -264,6 +264,6 @@ fn with_threadpool() -> io::Result<()> {
 }
 
 fn main() -> io::Result<()> {
-    with_rayon()
+    with_threadpool()
 
 }
