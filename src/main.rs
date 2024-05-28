@@ -1,11 +1,12 @@
 use memmap::Mmap;
-use rayon::prelude::*;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, Cursor, Read};
-use std::path::Path;
+use std::io::{self, BufRead, Cursor, Read};
 use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
+use num_cpus;
+use std::time::Instant;
 
 #[derive(Debug, Clone)]
 struct TempStats {
@@ -67,125 +68,20 @@ fn print(map: Vec<(&String, &TempStats)>) {
 
 const CHUNK_SIZE: usize = 1 << 23; // 1 mb
 
-fn with_sequential() -> io::Result<()> {
-    let mut map: HashMap<String, TempStats> = HashMap::new();
-    let mut _counter = 0;
 
-    let file_path = Path::new("measurements.txt");
-
-    // Open the file in read-only mode (ignoring errors).
-    let file = File::open(file_path)?;
-
-    // Create a new buffered reader for the file
-    let reader = io::BufReader::new(file);
-
-    // Iterate over each line in the file
-    for line in reader.lines() {
-        // The `line` is wrapped in a Result for error handling
-        match line {
-            Ok(line) => {
-                let mut iterator = line.split(';');
-                // Parse line by ;
-                let key = iterator.next().unwrap();
-                let _val: f32 = iterator.next().unwrap().parse().unwrap();
-
-                //println!("KEY {} VAL {}", key, _val);
-                map.entry(key.to_string())
-                    .and_modify(|val| val.update(_val))
-                    .or_insert_with(|| TempStats::new(_val));
-
-                _counter += 1;
-
-                if _counter % 50_000_000 == 0 {
-                    println!("Readed {}", _counter);
-                }
-            }
-            Err(e) => {
-                // Handle any errors that may occur
-                println!("Error reading line: {}", e);
-            }
-        }
-    }
-
-    // Write map
-    print_hm(map);
-
-    Ok(())
-}
-
-fn with_rayon() -> io::Result<()> {
-    let file_path = "measurements.txt";
-    let file = File::open(file_path)?;
-    let reader = BufReader::new(file);
-
-    let results: HashMap<String, TempStats> = reader
-        .lines()
-        .filter_map(Result::ok)
-        .par_bridge() // Convert to a parallel iterator
-        .filter_map(|line| {
-            let parts: Vec<&str> = line.split(';').collect();
-            parts.get(0).and_then(|&city| {
-                parts.get(1).and_then(|&value_str| {
-                    value_str
-                        .parse::<f32>()
-                        .ok()
-                        .map(|value| (city.to_string(), value))
-                })
-            })
-        })
-        .fold(
-            || HashMap::new(),
-            |mut acc: HashMap<String, TempStats>, (city, value)| {
-                acc.entry(city)
-                    .and_modify(|stats| stats.update(value))
-                    .or_insert_with(|| TempStats::new(value));
-                acc
-            },
-        )
-        .reduce(
-            || HashMap::new(),
-            |mut acc: HashMap<String, TempStats>, curr: HashMap<String, TempStats>| {
-                for (city, stats) in curr {
-                    acc.entry(city)
-                        .and_modify(|e| {
-                            e.update(stats.min_temp);
-                            e.update(stats.max_temp);
-                        })
-                        .or_insert(stats);
-                }
-                acc
-            },
-        );
-
-    // Sorting results
-    let mut results: Vec<_> = results.into_iter().collect();
-    results.sort_by(|a, b| a.0.cmp(&b.0));
-
-    print!("{}", '{');
-    // Print results
-    for (city, val) in results {
-        print!(
-            "{}={:.1}/{:.1}/{:.1},",
-            city,
-            val.min_temp,
-            val.mean(),
-            val.max_temp
-        );
-    }
-    print!("{}", '}');
-
-    Ok(())
-}
 
 fn with_threadpool() -> io::Result<()> {
+    let start = Instant::now();
+
+
     let path = "measurements.txt";
     let file = File::open(path)?;
     let mmap = unsafe { Mmap::map(&file)? };
-    let mmap_arc = Arc::new(mmap); // Wrap the Mmap in an Arc here
+    let mmap_arc = Arc::new(mmap);
 
     let file_len = mmap_arc.len();
 
-    let thread_count = (file_len + CHUNK_SIZE - 1) / CHUNK_SIZE;
+    let thread_count = num_cpus::get();
     let pool = ThreadPool::new(thread_count);
     let results = Arc::new(Mutex::new(Vec::new()));
 
@@ -241,6 +137,7 @@ fn with_threadpool() -> io::Result<()> {
     // Merge local maps into a global map
     let mut global_map: HashMap<String, TempStats> = HashMap::new();
     let results = results.lock().unwrap();
+
     for local_map in results.iter() {
         for (city, stats) in local_map {
             global_map.entry(city.clone())
@@ -258,6 +155,11 @@ fn with_threadpool() -> io::Result<()> {
     let mut cities: Vec<_> = global_map.iter().collect();
     cities.sort_by_key(|&(city, _)| city);
     print(cities);
+
+
+    println!();
+    println!("Total execution time is : {:?}" ,start.elapsed());
+
 
     Ok(())
 

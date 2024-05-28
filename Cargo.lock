@@ -90,6 +90,7 @@ name = "rust_1brc"
 version = "0.1.0"
 dependencies = [
  "memmap",
+ "num_cpus",
  "rayon",
  "threadpool",
 ]
