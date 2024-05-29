@@ -1,16 +1,15 @@
-# 1 Billion Row Challange
+# 1 Billion Row Challenge
 
-For aggregrating 1B row with 3 different approch eveluated with (AMD Ryzen 7 3700U , 16 gb Ram) system, with theed pooling and MMap I achieve under 1 second aggregrate response ( 50 - 40 s).
+For aggregating 1 billion rows with 3 different approaches evaluated on an AMD Ryzen 7 3700U with 16 GB RAM, using thread pooling and memory mapping (MMap), I achieved an aggregation response time under 1 second (50 - 40 ms).
 
 **Update**
 
-For some otimization configration changing threadPool size and CHUNK_SIZE it will make very quick like 35-40ms on same device.
+By optimizing the configuration and adjusting the thread pool size and CHUNK_SIZE, the aggregation time can be reduced to 35-40 ms on the same device.
 
 ```bash
-    hyperfine --warmup 10 --runs 20  "./target/release/rust_1brc"
+hyperfine --warmup 10 --runs 20 "./target/release/rust_1brc"
 ```
 ![](./bench.png)
-
 
 
 ### Create measurements file
