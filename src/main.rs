@@ -4,7 +4,6 @@ use std::fs::File;
 use std::io::{self, BufRead, Cursor, Read};
 use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
-use num_cpus;
 use std::time::Instant;
 
 #[derive(Debug, Clone)]
@@ -66,7 +65,7 @@ fn solution() -> io::Result<()> {
     let mmap_arc = Arc::new(mmap);
 
     let file_len = mmap_arc.len();
-    let thread_count = num_cpus::get();
+    let thread_count = std::thread::available_parallelism().unwrap().into();
     let pool = ThreadPool::new(thread_count);
     let results = Arc::new(Mutex::new(Vec::new()));
 
