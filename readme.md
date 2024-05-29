@@ -1,6 +1,6 @@
 # 1 Billion Row Challenge
 
-For aggregating 1 billion rows with 3 different approaches evaluated on an AMD Ryzen 7 3700U with 16 GB RAM, using thread pooling and memory mapping (MMap), I achieved an aggregation response time under 1 second (50 - 40 ms).
+For aggregating 1 billion rows with 3 different approaches evaluated on an AMD Ryzen 7 3700U with 16 GB RAM, using thread pooling and memory mapping (MMap), I achieved an aggregation response time under 1 minute (50 - 40 sn).
 
 **Update**
 
