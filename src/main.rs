@@ -1,5 +1,4 @@
 use memmap::Mmap;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead, Cursor, Read};
@@ -38,19 +37,6 @@ impl TempStats {
     }
 }
 
-fn print_hm(map: HashMap<String, TempStats>) {
-    print!("{}", '{');
-    for (key, temp) in map {
-        print!(
-            "{}={}/{}/{}, ",
-            key,
-            temp.min_temp,
-            temp.mean(),
-            temp.max_temp
-        );
-    }
-    print!("{}", '}');
-}
 
 fn print(map: Vec<(&String, &TempStats)>) {
     print!("{}", '{');
@@ -66,12 +52,12 @@ fn print(map: Vec<(&String, &TempStats)>) {
     print!("{}", '}');
 }
 
-const CHUNK_SIZE: usize = 1 << 23; // 1 mb
+const CHUNK_SIZE: usize = 1 << 20;  // Less then 1 Mb
 
 
 
-fn with_threadpool() -> io::Result<()> {
-    let start = Instant::now();
+fn solution() -> io::Result<()> {
+    let start: Instant = Instant::now();
 
 
     let path = "measurements.txt";
@@ -80,7 +66,6 @@ fn with_threadpool() -> io::Result<()> {
     let mmap_arc = Arc::new(mmap);
 
     let file_len = mmap_arc.len();
-
     let thread_count = num_cpus::get();
     let pool = ThreadPool::new(thread_count);
     let results = Arc::new(Mutex::new(Vec::new()));
@@ -166,6 +151,5 @@ fn with_threadpool() -> io::Result<()> {
 }
 
 fn main() -> io::Result<()> {
-    with_threadpool()
-
+    solution()
 }
